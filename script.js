@@ -15,6 +15,9 @@ function transpileToCpp(customCode) {
         let args = p1.split(',').map(arg => arg.trim()).join(' << ');
         return `std::cout << ${args};`;
     });
+    // 【追加】配列の初期化 = [1, 2, 3] を = {1, 2, 3} に変換する
+    // ※ v[1] のような要素アクセスと区別するため、= の後ろにある場合のみ変換します
+    cpp = cpp.replace(/=\s*\[(.*?)\]/g, "= {$1}");
 
     // 2. 基本的な型やキーワードの置換
     cpp = cpp.replaceAll('M{', 'int main(){');
