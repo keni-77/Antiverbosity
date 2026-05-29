@@ -67,6 +67,7 @@ async function runCode() {
     const requestData = {
         code: cppCode,
         compiler: "gcc-head", // 最新のGCCコンパイラを使用
+        stdin: document.getElementById('stdin').value, // 👈 これが入っているかチェック！
         save: false
     };
 
