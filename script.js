@@ -2,9 +2,9 @@
 function transpileToCpp(customCode) {
     let cpp = customCode;
 
-    // 1. 関数系の置換（I() と O() を先に処理する）
-    // 【修正】入力 I(a, b) -> cin >> a >> b;
-    // ※「(」が付いているものを優先して置換することで、型の I と自動で区別されます。
+    // 1. 関数系・マクロ系の置換（カッコを伴うものを先に処理する）
+    
+    // 入力 I(a, b) -> cin >> a >> b;
     cpp = cpp.replace(/I\((.*?)\);/g, function(match, p1) {
         let args = p1.split(',').map(arg => arg.trim()).join(' >> ');
         return `std::cin >> ${args};`;
@@ -15,14 +15,22 @@ function transpileToCpp(customCode) {
         let args = p1.split(',').map(arg => arg.trim()).join(' << ');
         return `std::cout << ${args};`;
     });
-    // 【追加】配列の初期化 = [1, 2, 3] を = {1, 2, 3} に変換する
-    // ※ v[1] のような要素アクセスと区別するため、= の後ろにある場合のみ変換します
+
+    // 増加ループ FP(i, 0, n) -> for(long long int i = 0; i < n; i++)
+    cpp = cpp.replace(/\bFP\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, "for(long long int $1 = $2; $1 < $3; $1++)");
+
+    // 減少ループ FM(i, n, 0) -> for(long long int i = n; i > 0; i--)
+    cpp = cpp.replace(/\bFM\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g, "for(long long int $1 = $2; $1 > $3; $1--)");
+
+    // 【追加】通常のfor文：あとに「(`」が付く F(...) -> for(...)
+    // ※ F と ( の間にスペースがあっても対応できるように \s* を入れています
+    cpp = cpp.replace(/\bF\s*\(/g, "for(");
+
+    // 配列の初期化 = [1, 2, 3] を = {1, 2, 3} に変換する
     cpp = cpp.replace(/=\s*\[(.*?)\]/g, "= {$1}");
 
     // 2. 基本的な型やキーワードの置換
-    // \b（単語の境界）を使うことで、< > , ; などの記号と接していても正確に置換します
-
-    // main関数の M{ （間にスペースがあっても対応できるようにします）
+    // main関数の M{
     cpp = cpp.replace(/\bM\s*\{/g, 'int main(){');
 
     // データ型・キーワードの置換
@@ -34,8 +42,11 @@ function transpileToCpp(customCode) {
     cpp = cpp.replace(/\bP\b/g, 'pair');
     cpp = cpp.replace(/\bT\b/g, 'tuple');
     cpp = cpp.replace(/\bC\b/g, 'char');
-    cpp = cpp.replace(/\bM\b/g, 'map');  // ↑で M{ を処理済みなので、残った M は自動で map になります
-    cpp = cpp.replace(/\bF\b/g, 'void');
+    cpp = cpp.replace(/\bM\b/g, 'map');
+    
+    // 【復活】カッコの付かない単独の F は void に変換
+    cpp = cpp.replace(/\bF\b/g, 'void'); 
+    
     cpp = cpp.replace(/\bR\b/g, 'return');
     cpp = cpp.replace(/\bIF\b/g, 'if');
     cpp = cpp.replace(/\bW\b/g, 'while');
@@ -183,3 +194,160 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+// --- フィルター回避用：完全ローカル認証＆コード保存システム ---
+
+let currentUser = null;
+
+// 1. 新規登録（ブラウザのLocalStorageにユーザー情報を記録）
+function localSignUp() {
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+
+    if (!user || !pass) { alert("ユーザー名とパスワードを入力してください"); return; }
+
+    let users = JSON.parse(localStorage.getItem('ide_users') || '{}');
+
+    if (users[user]) {
+        alert("そのユーザー名はすでに登録されています");
+        return;
+    }
+
+    // パスワードを登録（簡易的に保存。外部に送信されません）
+    users[user] = { password: pass };
+    localStorage.setItem('ide_users', JSON.stringify(users));
+    alert("登録が完了しました！そのままログインしてください。");
+}
+
+// 2. ログイン（ページ遷移せず、画面の表示だけを切り替える）
+function localSignIn() {
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value;
+
+    let users = JSON.parse(localStorage.getItem('ide_users') || '{}');
+
+    if (users[user] && users[user].password === pass) {
+        currentUser = user;
+        showLoggedInUI();
+        loadLocalCodes();
+    } else {
+        alert("ユーザー名またはパスワードが違います");
+    }
+}
+
+// ログイン成功時の画面切り替え
+function showLoggedInUI() {
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('saveSection').style.display = 'block';
+    document.getElementById('userDisplay').innerText = currentUser;
+}
+
+// 3. ログアウト
+function localLogout() {
+    currentUser = null;
+    document.getElementById('authSection').style.display = 'block';
+    document.getElementById('saveSection').style.display = 'none';
+    document.getElementById('username').value = "";
+    document.getElementById('password').value = "";
+}
+
+// 4. コードをローカルに保存（ユーザーごとに区別）
+function saveCodeLocal() {
+    if (!currentUser) return;
+
+    const title = document.getElementById('codeTitle').value.trim() || "無題のコード";
+    const code = document.getElementById('sourceCode').value;
+    const stdin = document.getElementById('stdin').value;
+
+    let allCodes = JSON.parse(localStorage.getItem('ide_saved_codes') || '[]');
+
+    // 新しいコードデータを追加
+    allCodes.push({
+        user: currentUser,
+        title: title,
+        code: code,
+        stdin: stdin,
+        date: new Date().toLocaleString()
+    });
+
+    localStorage.setItem('ide_saved_codes', JSON.stringify(allCodes));
+    alert("コードをこのパソコン内に保存しました！");
+    document.getElementById('codeTitle').value = "";
+    loadLocalCodes();
+}
+
+// 5. 保存したコード一覧を読み込んで表示（【修正】削除ボタンを追加）
+function loadLocalCodes() {
+    if (!currentUser) return;
+
+    const listElement = document.getElementById('savedCodesList');
+    listElement.innerHTML = "";
+
+    let allCodes = JSON.parse(localStorage.getItem('ide_saved_codes') || '[]');
+    
+    // ログイン中のユーザーのデータだけをフィルター（元の配列内での本当のインデックスも一緒に保持する）
+    let myCodes = allCodes
+        .map((item, originalIndex) => ({ ...item, originalIndex }))
+        .filter(item => item.user === currentUser);
+
+    if (myCodes.length === 0) {
+        listElement.innerHTML = `<li style="color: #666; font-size: 13px;">保存されたコードはありません。</li>`;
+        return;
+    }
+
+    myCodes.forEach((item) => {
+        const li = document.createElement('li');
+        li.style.margin = "8px 0";
+        li.style.display = "flex";
+        li.style.justifyContent = "between";
+        li.style.alignItems = "center";
+        li.style.maxWidth = "400px";
+        
+        li.innerHTML = `
+            <div style="flex-grow: 1;">
+                <a href="#" onclick="loadSelectedCode(${item.originalIndex}); return false;" style="color: #007bff; text-decoration: none; font-weight: bold;">
+                    ${item.title}
+                </a> 
+                <br>
+                <span style="font-size: 11px; color: #666;">(${item.date})</span>
+            </div>
+            <button onclick="deleteCodeLocal(${item.originalIndex}, '${item.title}')" style="background: #dc3545; color: white; border: none; padding: 3px 8px; font-size: 12px; border-radius: 3px; cursor: pointer; margin-left: 10px;">
+                削除
+            </button>
+        `;
+        listElement.appendChild(li);
+    });
+}
+
+// 6. 一覧から選んだコードをエディタに復元する（【修正】引数を一意のインデックスに変更）
+function loadSelectedCode(originalIndex) {
+    let allCodes = JSON.parse(localStorage.getItem('ide_saved_codes') || '[]');
+    const target = allCodes[originalIndex];
+
+    if (target && target.user === currentUser) {
+        document.getElementById('sourceCode').value = target.code;
+        document.getElementById('stdin').value = target.stdin;
+        alert(`「${target.title}」を読み込みました！`);
+    }
+}
+
+// 【追加】7. 指定したコードをLocalStorageから削除する関数
+function deleteCodeLocal(originalIndex, title) {
+    // 学校のPCで誤クリックしても大丈夫なように確認を挟む
+    if (!confirm(`「${title}」を本当に削除してもよろしいですか？\n※この操作は取り消せません。`)) {
+        return;
+    }
+
+    let allCodes = JSON.parse(localStorage.getItem('ide_saved_codes') || '[]');
+    
+    // 安全チェック: 削除しようとしているコードが本当に自分のものか確認
+    if (allCodes[originalIndex] && allCodes[originalIndex].user === currentUser) {
+        // 指定した位置のデータを1件削除
+        allCodes.splice(originalIndex, 1);
+        
+        // データベース（LocalStorage）を更新
+        localStorage.setItem('ide_saved_codes', JSON.stringify(allCodes));
+        
+        // 画面の一覧をリフレッシュ
+        loadLocalCodes();
+    }
+}
