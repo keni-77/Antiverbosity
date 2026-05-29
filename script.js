@@ -47,7 +47,7 @@ function transpileToCpp(customCode) {
     cpp = cpp.replace(/long long int\s+([a-zA-Z0-9_]+);/g, "long long int $1 = 0;");
 
     // 4. C++の必須ヘッダー
-    const header = `#include <iostream>\n#include <string>\n#include <vector>\nusing namespace std;\n\n`;
+    const header = `#include <bits/stdc++.h>\nusing namespace std;\n\n`;
     
     return header + cpp;
 }
