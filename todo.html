@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>やることリスト</title>
+<style>
+:root{
+  --bg:#f6f8fb;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --accent:#2563eb;
+  --accent-strong:#1e40af;
+  --danger:#dc2626;
+  --shadow: 0 10px 30px rgba(15,23,42,0.08);
+  --radius:14px;
+  --maxw:1100px;
+  --gap:10px;
+  --font-base:15px;
+  --small-font:10px;
+}
+
+/* base */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg,#eef4ff 0%, #f6f8fb 100%);
+  margin:0;
+  padding:28px;
+  color:#0f172a;
+  -webkit-font-smoothing:antialiased;
+  font-size:var(--font-base);
+  line-height:1.45;
+  transition: background 0.5s ease;
+}
+
+body.birthday-mode { background: linear-gradient(180deg,#ffeef8 0%, #fff6fb 100%); }
+
+.app{max-width:var(--maxw);margin:0 auto}
+.app-header{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.app-header h1{margin:0;font-size:28px;font-weight:800}
+.header-sub{color:var(--muted);font-size:var(--small-font)}
+
+/* 誕生日バナー */
+.birthday-banner {
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+  color: #c026d3;
+  padding: 16px; border-radius: 14px; text-align: center;
+  font-weight: 800; font-size: 20px; margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(255, 154, 158, 0.4);
+  animation: bounce 1s infinite alternate;
+}
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
+}
+
+/* tabs */
+.tabs{display:flex;gap:12px;margin-bottom:20px}
+.tab{
+  padding:12px 18px;border-radius:12px;border:1px solid rgba(15,23,42,0.06);
+  background:transparent;cursor:pointer;font-weight:700;color:#1f2937;font-size:16px;
+  transition:all .12s ease;
+}
+.tab.active{background:var(--accent);color:#fff;box-shadow:var(--shadow);transform:translateY(-2px)}
+body.birthday-mode .tab.active{background:#ec4899; box-shadow: 0 10px 30px rgba(236,72,153,0.2);}
+
+/* card */
+.card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px}
+
+/* buttons */
+.btn{padding:10px 14px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:#fff;cursor:pointer;font-weight:700;font-size:15px}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+body.birthday-mode .btn.primary{background:#ec4899;border-color:#ec4899}
+.btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn:active{transform:translateY(1px)}
+
+/* tools row */
+.tools-row{display:flex;justify-content:space-between;align-items:center;margin:12px 0}
+.today-info{color:var(--muted);font-size:var(--small-font)}
+
+/* lists */
+.section-title{margin:10px 0 12px 0;font-size:20px;font-weight:800}
+.list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+
+/* task card */
+.task-card{
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(16,24,40,0.06);
+  display:flex;flex-direction:column;gap:10px;border:1px solid #eef6ff;
+}
+.task-top{display:flex;align-items:center;gap:12px}
+.task-title{font-weight:800;font-size:18px}
+.task-meta{color:var(--muted);font-size:15px;margin-left:auto;text-align:right}
+.task-memo{color:#475569;font-size:15px}
+.task-card.birthday-task { background: #fff0f6; border-color: #fce7f3; }
+
+input[type="checkbox"]{ width:22px;height:22px;cursor:pointer;transform:scale(1.25); accent-color: var(--accent-strong); }
+body.birthday-mode input[type="checkbox"]{ accent-color: #ec4899; }
+
+.task-actions{display:flex;gap:10px;align-items:center}
+.task-actions button{padding:8px 12px;border-radius:10px;font-weight:700}
+
+/* hidden */
+.hidden-area{margin-top:14px;padding:14px;border-radius:12px;background:linear-gradient(180deg,#fbfbfb,#f7f7f8);border:1px solid #eee}
+.hidden-task{opacity:0.9;color:#7b8188;background:transparent;border:1px dashed rgba(139,143,152,0.06)}
+
+/* edit list */
+.edit-list{display:flex;flex-direction:column;gap:12px}
+.edit-row{display:flex;gap:10px;align-items:center;padding:12px;border-radius:12px;background:linear-gradient(180deg,#fff,#fcfdff);border:1px solid #eef6ff;flex-wrap:wrap}
+.edit-row input[type="text"], .edit-row input[type="date"], .edit-row select{padding:10px;border-radius:10px;border:1px solid #e6e9ef;background:#fff;font-size:15px}
+.edit-actions{margin-left:auto;display:flex;gap:10px}
+.example { color: #9aa0a6; font-size:14px; margin-left:8px; white-space:nowrap; }
+
+/* 編集画面のグループ見出し */
+.edit-group-title {
+  margin: 24px 0 4px 0; font-size: 16px; font-weight: 800; color: var(--accent-strong);
+  border-bottom: 2px solid #eef6ff; padding-bottom: 6px;
+}
+.edit-group-title:first-child { margin-top: 0; }
+
+input:focus, select:focus, button:focus {
+  outline: 3px solid rgba(37,99,235,0.18); outline-offset: 2px;
+}
+
+.app-footer{margin-top:20px;color:var(--muted);font-size:14px;text-align:center}
+@media (max-width:900px){
+  .list-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  .task-title{font-size:16px}
+  .task-meta{font-size:13px}
+}
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>やることリスト</h1>
+      <div class="header-sub">表示はシンプルに。編集は専用モードで行います。</div>
+    </header>
+
+    <div id="birthdayBanner" class="birthday-banner" style="display:none;"></div>
+
+    <nav class="tabs">
+      <button id="displayTab" class="tab active">表示モード</button>
+      <button id="editTab" class="tab">編集モード</button>
+    </nav>
+
+    <main id="displayArea" class="area">
+      <section class="card">
+        <div class="tools-row">
+          <div class="today-info">今日: <span id="todayLabel"></span></div>
+        </div>
+        <h2 class="section-title">今日のタスク・課題</h2>
+        <div id="taskList" class="list-grid"></div>
+        <div class="hidden-toggle" style="margin-top: 16px;">
+          <button id="toggleHidden" class="btn">- 非表示 -</button>
+        </div>
+        <div id="hiddenArea" class="hidden-area" style="display:none;">
+          <h3>完了したタスク</h3>
+          <div id="hiddenList" class="list-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <main id="editArea" class="area" style="display:none;">
+      <section class="card edit-card">
+        <div class="edit-tools" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom: 16px;">
+          <button id="newDraftBtn" class="btn primary">新規追加（下書き）</button>
+          <button id="deleteAll" class="btn danger">全削除</button>
+          <div style="font-size: 13px; color: var(--muted); width: 100%;">追加は「新規追加」で空の下書きを作り、それを編集して保存してください。下書きは表示モードに出ません。</div>
+        </div>
+        
+        <h2 class="section-title">全タスク・課題（編集）</h2>
+        <div id="editList" class="edit-list"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>localStorage に保存されます。下書きは表示モードに反映されません。</small>
+    </footer>
+  </div>
+
+<script>
+const STORAGE_KEY = "tasks_simple_edit_v2"; 
+let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+let saveTimer = null;
+const SAVE_DEBOUNCE_MS = 300;
+
+const displayTab = document.getElementById("displayTab");
+const editTab = document.getElementById("editTab");
+const displayArea = document.getElementById("displayArea");
+const editArea = document.getElementById("editArea");
+const todayLabel = document.getElementById("todayLabel");
+const birthdayBanner = document.getElementById("birthdayBanner");
+todayLabel.textContent = new Date().toLocaleDateString("ja-JP");
+
+// ★修正ポイント：端末のローカル時間（日本時間）で正しい日付の文字列を作成する
+function toLocalDateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// 今日の日付を正しく取得
+function todayISO(){ return toLocalDateString(new Date()); }
+
+function saveDebounced(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=> {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    saveTimer = null;
+  }, SAVE_DEBOUNCE_MS);
+}
+function weekdayName(n){ return ["日","月","火","水","木","金","土"][n] || ""; }
+function formatMonthDay(iso){ if(!iso) return ""; const d = new Date(iso); return `${d.getMonth()+1}月${d.getDate()}日`; }
+function escapeHtml(s){ if(!s) return ""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+
+function getMostRecentTargetDate(weekdays) {
+  if(!weekdays || weekdays.length === 0) return "1970-01-01";
+  const today = new Date();
+  const currentWeekday = today.getDay();
+  let latest = "1970-01-01";
+  weekdays.forEach(wd => {
+    let diff = currentWeekday - wd;
+    if (diff < 0) diff += 7;
+    const d = new Date(today);
+    d.setDate(today.getDate() - diff);
+    // ここも修正
+    const iso = toLocalDateString(d);
+    if (iso > latest) latest = iso;
+  });
+  return latest;
+}
+
+let currentMode = "display";
+function switchMode(mode){
+  currentMode = mode;
+  if(mode === "display"){
+    displayArea.style.display = ""; editArea.style.display = "none";
+    displayTab.classList.add("active"); editTab.classList.remove("active");
+    cleanupExpiredDates(); resetDailyChecks(); render();
+  } else {
+    displayArea.style.display = "none"; editArea.style.display = "";
+    displayTab.classList.remove("active"); editTab.classList.add("active");
+    renderEdit();
+  }
+}
+displayTab.addEventListener("click", ()=> switchMode("display"));
+editTab.addEventListener("click", ()=> switchMode("edit"));
+
+window.addEventListener("load", () => { cleanupExpiredDates(); resetDailyChecks(); render(); });
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible"){
+    cleanupExpiredDates(); resetDailyChecks();
+    if(currentMode === "display") render(); else renderEdit();
+  }
+});
+
+function cleanupExpiredDates(){
+  const today = todayISO();
+  const before = tasks.length;
+  tasks = tasks.filter(t => {
+    if(t.type === "once" && t.date && t.date < today) return false;
+    if(t.type === "deadline_once" && t.isDone && t.date && t.date < today) return false;
+    return true;
+  });
+  if(tasks.length !== before) saveDebounced();
+}
+
+function resetDailyChecks(){
+  const today = todayISO();
+  let changed = false;
+  tasks.forEach(t => {
+    if(t.isDone) {
+      if(t.type === "daily" || t.type === "weekly" || t.everyday) {
+        if(t.lastDoneDate !== today){ t.isDone = false; changed = true; }
+      } 
+      else if(t.type === "deadline_weekly") {
+        if(t.weekdays && t.weekdays.length > 0) {
+          const recentTarget = getMostRecentTargetDate(t.weekdays);
+          if(t.lastDoneDate < recentTarget) { t.isDone = false; changed = true; }
+        }
+      }
+    }
+  });
+  if(changed) saveDebounced();
+}
+
+function render(){
+  const taskList = document.getElementById("taskList");
+  const hiddenList = document.getElementById("hiddenList");
+  taskList.innerHTML = ""; hiddenList.innerHTML = "";
+
+  const today = new Date(); const todayStr = todayISO(); const wd = today.getDay();
+  let birthdayNames = [];
+
+  tasks.forEach(task => {
+    if(task.isDraft) return;
+    let isToday = false;
+    let isBirthdayTask = false;
+
+    if(task.type === "birthday" && task.date && task.date.slice(5) === todayStr.slice(5)){
+      isToday = true; isBirthdayTask = true; birthdayNames.push(task.title);
+    } 
+    else if(task.type === "daily") isToday = true;
+    else if(task.type === "weekly"){
+      if(task.everyday) isToday = true;
+      else if(Array.isArray(task.weekdays) && task.weekdays.includes(wd)) isToday = true;
+    } 
+    else if(task.type === "once" && task.date === todayStr) isToday = true;
+    else if(task.type === "deadline_weekly" || task.type === "deadline_once"){ isToday = true; }
+
+    if(!isToday && !task.isDone) return;
+
+    if(task.isDone && !isBirthdayTask){
+      hiddenList.appendChild(createTaskCard(task, true));
+    } else if(isToday){
+      taskList.appendChild(createTaskCard(task, false, isBirthdayTask));
+    }
+  });
+
+  if(birthdayNames.length > 0){
+    document.body.classList.add("birthday-mode");
+    birthdayBanner.style.display = "block";
+    const names = birthdayNames.map(n => escapeHtml(n)).join(" & ");
+    birthdayBanner.innerHTML = `🎉 今日は ${names} の誕生日です！おめでとう！ 🎂`;
+  } else {
+    document.body.classList.remove("birthday-mode");
+    birthdayBanner.style.display = "none";
+  }
+
+  const hiddenArea = document.getElementById("hiddenArea");
+  const toggleBtn = document.getElementById("toggleHidden");
+  if(getComputedStyle(hiddenArea).display !== "none"){
+    toggleBtn.textContent = "非表示を閉じる";
+  } else { toggleBtn.textContent = "- 完了したタスクを表示 -"; }
+
+  document.querySelectorAll('.undoBtn').forEach(btn => btn.addEventListener('click', () => undoTask(Number(btn.dataset.id))));
+  document.querySelectorAll('.chkTask').forEach(cb => cb.addEventListener('click', () => checkTask(Number(cb.dataset.id))));
+}
+
+function createTaskCard(task, hidden=false, isBirthday=false){
+  const div = document.createElement("div");
+  div.className = "task-card" + (hidden ? " hidden-task" : "") + (isBirthday ? " birthday-task" : "");
+  const top = document.createElement("div"); top.className = "task-top";
+  const left = document.createElement("div"); left.style.display="flex"; left.style.alignItems="center"; left.style.gap="10px";
+
+  if(isBirthday){
+    left.innerHTML = `<div style="font-size:26px;">🎂</div><div class="task-title" style="color:#db2777;">${escapeHtml(task.title)}</div>`;
+  } else if(!hidden){
+    const chk = document.createElement("input"); chk.type="checkbox"; chk.className="chkTask"; chk.dataset.id = task.id; left.appendChild(chk);
+    const title = document.createElement("div"); title.className="task-title"; title.innerHTML = escapeHtml(task.title || "(無題)");
+    left.appendChild(title);
+  } else {
+    const doneMark = document.createElement("div"); doneMark.textContent="✓"; doneMark.style.color="#10b981"; doneMark.style.fontWeight="800"; left.appendChild(doneMark);
+    const title = document.createElement("div"); title.className="task-title"; title.innerHTML = escapeHtml(task.title || "(無題)");
+    left.appendChild(title);
+  }
+  top.appendChild(left);
+
+  const meta = document.createElement("div"); meta.className="task-meta";
+  if(task.type === "weekly") meta.textContent = task.everyday ? "毎日" : (task.weekdays||[]).map(n=>weekdayName(n)).join("・") + "曜";
+  else if(task.type === "once") meta.textContent = formatMonthDay(task.date);
+  else if(task.type === "deadline_weekly") {
+    meta.textContent = "課題: 次の" + ((task.weekdays||[]).map(n=>weekdayName(n)).join("・") + "曜まで");
+    meta.style.color = "#ea580c"; meta.style.fontWeight = "bold";
+  }
+  else if(task.type === "deadline_once") {
+    meta.textContent = "課題: " + formatMonthDay(task.date) + "まで";
+    meta.style.color = "#ea580c"; meta.style.fontWeight = "bold";
+  }
+  else if(task.type === "birthday") meta.textContent = "誕生日！";
+  else meta.textContent = "毎日";
+  top.appendChild(meta);
+
+  const memo = document.createElement("div"); memo.className="task-memo"; memo.textContent = task.memo || "";
+
+  const actions = document.createElement("div"); actions.className="task-actions";
+  if(hidden){
+    const undo = document.createElement("button"); undo.className="btn"; undo.textContent="戻す"; undo.dataset.id = task.id; undo.classList.add("undoBtn"); actions.appendChild(undo);
+  } else {
+    const info = document.createElement("button"); info.className="btn"; info.textContent="編集";
+    info.addEventListener('click', ()=> { switchMode("edit"); setTimeout(()=> { const el = document.querySelector(`#editList .edit-row[data-id='${task.id}']`); if(el) el.scrollIntoView({behavior:'smooth', block:'center'}); }, 120); });
+    actions.appendChild(info);
+  }
+
+  div.appendChild(top);
+  if(task.memo) div.appendChild(memo);
+  div.appendChild(actions);
+  return div;
+}
+
+function checkTask(id){
+  const today = todayISO();
+  tasks = tasks.map(t => t.id === id ? {...t, isDone:true, lastDoneDate:today} : t);
+  saveDebounced(); render();
+}
+function undoTask(id){
+  tasks = tasks.map(t => t.id === id ? {...t, isDone:false} : t);
+  saveDebounced(); render();
+}
+
+function toggleHidden(){
+  const area = document.getElementById("hiddenArea");
+  const btn = document.getElementById("toggleHidden");
+  if(getComputedStyle(area).display !== "none"){ area.style.display = "none"; btn.textContent = "- 完了したタスクを表示 -"; } 
+  else { area.style.display = "block"; btn.textContent = "非表示を閉じる"; }
+}
+document.getElementById("toggleHidden").addEventListener("click", toggleHidden);
+
+/* ---------- 編集モード描画 ---------- */
+function renderEdit(){
+  const editList = document.getElementById("editList");
+  editList.innerHTML = "";
+
+  if(tasks.length === 0){ editList.innerHTML = `<div style="color:var(--muted)">タスクがありません。上の「新規追加」で追加してください。</div>`; return; }
+
+  const dailyTasks = tasks.filter(t => ["daily", "weekly", "once"].includes(t.type) || !t.type);
+  const deadlineTasks = tasks.filter(t => ["deadline_weekly", "deadline_once"].includes(t.type));
+  const birthdayTasks = tasks.filter(t => t.type === "birthday");
+
+  function createRowElement(task) {
+    const row = document.createElement("div"); row.className = "edit-row"; row.dataset.id = task.id;
+    const titleInput = document.createElement("input"); titleInput.type="text"; titleInput.value = task.title || ""; titleInput.style.minWidth="160px"; titleInput.placeholder = "タイトル";
+    const memoInput = document.createElement("input"); memoInput.type="text"; memoInput.value = task.memo || ""; memoInput.style.minWidth="140px"; memoInput.placeholder = "メモ";
+    
+    const typeSelect = document.createElement("select");
+    typeSelect.innerHTML = `
+      <option value="daily">毎日（ルーティン）</option>
+      <option value="weekly">曜日指定（その日だけ）</option>
+      <option value="once">日付指定（その日だけ）</option>
+      <option value="deadline_weekly">課題（曜日復活・完了まで表示）</option>
+      <option value="deadline_once">課題（期限日・完了まで表示）</option>
+      <option value="birthday">誕生日（毎年お祝い）</option>
+    `;
+    typeSelect.value = task.type || "daily";
+
+    const wkBox = document.createElement("div"); wkBox.style.display="flex"; wkBox.style.gap="6px"; wkBox.style.alignItems="center";
+    for(let i=0;i<7;i++){
+      const lab = document.createElement("label");
+      const cb = document.createElement("input"); cb.type="checkbox"; cb.value = i; cb.className = "wk-edit";
+      cb.checked = Array.isArray(task.weekdays) && task.weekdays.includes(i);
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(weekdayName(i)));
+      wkBox.appendChild(lab);
+    }
+
+    const dateInput = document.createElement("input"); dateInput.type="date"; dateInput.value = task.date || "";
+    const exampleSpan = document.createElement("div"); exampleSpan.className = "example";
+    
+    function updateExample(){
+      const title = titleInput.value || "タスク";
+      if(typeSelect.value === "weekly" || typeSelect.value === "deadline_weekly"){
+        const sel = []; wkBox.querySelectorAll(".wk-edit").forEach(cb => { if(cb.checked) sel.push(weekdayName(Number(cb.value))); });
+        let wkStr = sel.length > 0 ? sel.join("・")+"曜" : "未選択";
+        if(typeSelect.value === "weekly") exampleSpan.textContent = `例: ${wkStr}のみ表示`;
+        else exampleSpan.textContent = `例: ${wkStr}に復活し終わるまで表示`;
+      } else if(typeSelect.value === "once" || typeSelect.value === "deadline_once"){
+        const dStr = formatMonthDay(dateInput.value) || "未設定";
+        if(typeSelect.value === "once") exampleSpan.textContent = `例: ${dStr}のみ表示`;
+        else exampleSpan.textContent = `例: ${dStr}まで終わるまで表示`;
+      } else if(typeSelect.value === "birthday"){
+        exampleSpan.textContent = `例: 毎年 ${formatMonthDay(dateInput.value) || "未設定"} に特別表示`;
+      } else { exampleSpan.textContent = `例: 毎日表示`; }
+    }
+
+    const infoSpan = document.createElement("div"); infoSpan.style.color="#6b7280"; infoSpan.style.fontSize="13px";
+    infoSpan.textContent = task.isDraft ? "下書き" : (task.isDone ? `完了 (${task.lastDoneDate||""})` : "未完了");
+
+    const actions = document.createElement("div"); actions.className = "edit-actions";
+    const deleteBtn = document.createElement("button"); deleteBtn.textContent = "削除"; deleteBtn.className="btn danger";
+    actions.appendChild(deleteBtn);
+
+    row.appendChild(titleInput); row.appendChild(memoInput); row.appendChild(typeSelect);
+    row.appendChild(wkBox); row.appendChild(dateInput); row.appendChild(exampleSpan); row.appendChild(infoSpan); row.appendChild(actions);
+
+    function updateVisibility(){
+      const t = typeSelect.value;
+      if(t === "weekly" || t === "deadline_weekly"){ wkBox.style.display = ""; dateInput.style.display = "none"; }
+      else if(t === "once" || t === "deadline_once" || t === "birthday"){ wkBox.style.display = "none"; dateInput.style.display = ""; }
+      else { wkBox.style.display = "none"; dateInput.style.display = "none"; }
+      updateExample();
+    }
+    updateVisibility();
+    typeSelect.addEventListener("change", updateVisibility);
+    wkBox.querySelectorAll(".wk-edit").forEach(cb => cb.addEventListener("change", updateExample));
+    titleInput.addEventListener("input", updateExample);
+    dateInput.addEventListener("change", updateExample);
+
+    let localTimer = null;
+    function autoSave(){
+      if(localTimer) clearTimeout(localTimer);
+      localTimer = setTimeout(() => {
+        const id = Number(row.dataset.id);
+        const idx = tasks.findIndex(t => t.id === id);
+        if(idx === -1) return;
+        const newTitle = titleInput.value.trim();
+        const newWeekdays = [];
+        wkBox.querySelectorAll(".wk-edit").forEach(cb => { if(cb.checked) newWeekdays.push(Number(cb.value)); });
+
+        tasks[idx] = {
+          ...tasks[idx], title: newTitle, memo: memoInput.value.trim(),
+          type: typeSelect.value, date: dateInput.value || "", weekdays: newWeekdays,
+          isDraft: (tasks[idx].isDraft && newTitle !== "") ? false : tasks[idx].isDraft
+        };
+        saveDebounced();
+        infoSpan.textContent = tasks[idx].isDraft ? "下書き" : (tasks[idx].isDone ? `完了 (${tasks[idx].lastDoneDate||""})` : "未完了");
+      }, SAVE_DEBOUNCE_MS);
+    }
+    [titleInput, memoInput, typeSelect, dateInput, ...wkBox.querySelectorAll(".wk-edit")].forEach(el => {
+      el.addEventListener("input", autoSave); el.addEventListener("change", autoSave);
+    });
+
+    deleteBtn.addEventListener("click", () => {
+      if(!confirm("このタスクを削除しますか？")) return;
+      tasks = tasks.filter(t => t.id !== Number(row.dataset.id));
+      saveDebounced(); renderEdit();
+    });
+    updateExample();
+    return row;
+  }
+
+  if(dailyTasks.length > 0) {
+    const h = document.createElement("div"); h.className = "edit-group-title"; h.textContent = "📅 日常のタスク"; editList.appendChild(h);
+    dailyTasks.forEach(t => editList.appendChild(createRowElement(t)));
+  }
+  if(deadlineTasks.length > 0) {
+    const h = document.createElement("div"); h.className = "edit-group-title"; h.textContent = "🔥 課題・宿題"; editList.appendChild(h);
+    deadlineTasks.forEach(t => editList.appendChild(createRowElement(t)));
+  }
+  if(birthdayTasks.length > 0) {
+    const h = document.createElement("div"); h.className = "edit-group-title"; h.textContent = "🎂 誕生日"; editList.appendChild(h);
+    birthdayTasks.forEach(t => editList.appendChild(createRowElement(t)));
+  }
+}
+
+document.getElementById("newDraftBtn").addEventListener("click", () => {
+  const draft = { id: Date.now(), title: "", memo: "", type: "daily", weekdays: [], everyday: false, date: "", isDone: false, lastDoneDate: "", isDraft: true };
+  tasks.unshift(draft); saveDebounced(); switchMode("edit");
+  setTimeout(()=> {
+    renderEdit(); const el = document.querySelector(`#editList .edit-row[data-id='${draft.id}']`);
+    if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); const input = el.querySelector('input[type="text"]'); if(input) input.focus(); }
+  }, 80);
+});
+
+document.getElementById("deleteAll").addEventListener("click", () => {
+  if(!confirm("本当に全てのタスクを削除しますか？")) return;
+  tasks = []; saveDebounced(); renderEdit();
+});
+
+switchMode("display");
+</script>
+</body>
+</html>
